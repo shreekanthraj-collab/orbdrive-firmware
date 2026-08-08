@@ -7,8 +7,6 @@
 #define CONDITION_RESET_V             12.0f
 
 #define CONDITION_BYPASS_TIMEOUT_MS   120000UL
-#define CONDITION_CURRENT_OFF_A        1.5f
-#define CONDITION_OC_RETRY_STEP_A      1.0f
 #define CONDITION_OC_MAX_INTERVALS     2U
 #define CONDITION_OC_RETRY_DELAY_MS    30000UL
 
@@ -21,15 +19,36 @@ void conditionMonitorInit(ConditionMonitorContext_t *context)
 
     context->voltage_state = VOLTAGE_STATE_NORMAL;
     context->voltage_bypass_start_ms = 0U;
-
+    context->overcurrent_base_threshold_a = 1.0f;
+    context->overcurrent_active_threshold_a = 1.0f;
     context->overcurrent_retry_count = 0U;
     context->overcurrent_trip_ms = 0U;
-
+    context->last_overcurrent = false;
+    context->overcurrent_fault_active = false;
+    context->force_close_pending = false;
     context->actuator_last_movement_ms = 0U;
     context->disengagement_start_ms = 0U;
 
     context->actuator_fault_active = false;
     context->disengagement_fault_active = false;
+}
+
+void conditionMonitorSetOvercurrentThreshold(
+    ConditionMonitorContext_t *context,
+    float threshold_a)
+{
+    if (context == NULL)
+    {
+        return;
+    }
+
+    if (threshold_a <= 0.0f)
+    {
+        return;
+    }
+
+    context->overcurrent_base_threshold_a = threshold_a;
+    context->overcurrent_active_threshold_a = threshold_a;
 }
 
 static VoltageConditionState_t conditionMonitorEvaluateVoltage(
@@ -140,8 +159,53 @@ static VoltageConditionState_t conditionMonitorEvaluateVoltage(
     return context->voltage_state;
 }
 
+static void conditionMonitorEvaluateOvercurrent(
+    ConditionMonitorContext_t *context,
+    const ConditionMonitorInput_t *input,
+    uint32_t now_ms)
+{
+    if ((context == NULL) || (input == NULL))
+    {
+        return;
+    }
+
+    if (context->overcurrent_fault_active)
+    {
+        return;
+    }
+
+    if (context->last_overcurrent)
+    {
+        if ((now_ms - context->overcurrent_trip_ms) >=
+            CONDITION_OC_RETRY_DELAY_MS)
+        {
+            context->last_overcurrent = false;
+        }
+
+        return;
+    }
+
+    if (input->current_a > context->overcurrent_active_threshold_a)
+    {
+        if (context->overcurrent_retry_count >=
+            CONDITION_OC_MAX_INTERVALS)
+        {
+            context->overcurrent_fault_active = true;
+            context->force_close_pending = true;
+        }
+        else
+        {
+            context->last_overcurrent = true;
+            context->overcurrent_trip_ms = now_ms;
+            context->overcurrent_retry_count++;
+        }
+    }
+}
+
 static void conditionMonitorBuildVoltageResult(
     VoltageConditionState_t voltage_state,
+    const ConditionMonitorContext_t *context,
+    const ConditionMonitorInput_t *input,
     ConditionMonitorResult_t *result)
 {
     if (result == NULL)
@@ -153,6 +217,35 @@ static void conditionMonitorBuildVoltageResult(
     result->fault = FAULT_CODE_NONE;
     result->motor_stop_required = false;
     result->lock_required = false;
+    result->force_close_required = false;
+
+    if (context->force_close_pending)
+    {
+        result->state = CONDITION_STATE_FAULT;
+        result->fault = FAULT_CODE_OVERCURRENT;
+        result->motor_stop_required = true;
+
+        if (!input->forced_close_complete)
+        {
+            result->force_close_required = true;
+            return;
+        }
+
+        result->state = CONDITION_STATE_LOCKED;
+        result->fault = FAULT_CODE_OVERCURRENT;
+        result->motor_stop_required = true;
+        result->lock_required = true;
+
+        return;
+    }
+
+    if (context->last_overcurrent)
+    {
+        result->state = CONDITION_STATE_FAULT;
+        result->fault = FAULT_CODE_OVERCURRENT;
+        result->motor_stop_required = true;
+        return;
+    }
 
     switch (voltage_state)
     {
@@ -210,7 +303,14 @@ void conditionMonitorEvaluate(
             input->voltage_v,
             now_ms);
 
+    conditionMonitorEvaluateOvercurrent(
+        context,
+        input,
+        now_ms);
+
     conditionMonitorBuildVoltageResult(
         voltage_state,
+        context,
+        input,
         result);
 }
