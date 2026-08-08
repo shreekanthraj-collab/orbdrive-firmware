@@ -7,6 +7,10 @@
 #define CONDITION_RESET_V             12.0f
 
 #define CONDITION_BYPASS_TIMEOUT_MS   120000UL
+#define CONDITION_CURRENT_OFF_A        1.5f
+#define CONDITION_OC_RETRY_STEP_A      1.0f
+#define CONDITION_OC_MAX_INTERVALS     2U
+#define CONDITION_OC_RETRY_DELAY_MS    30000UL
 
 void conditionMonitorInit(ConditionMonitorContext_t *context)
 {
