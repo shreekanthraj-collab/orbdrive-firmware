@@ -1,0 +1,7 @@
+build/
+sdkconfig.old
+sdkconfig.*.old
+.vscode/
+.clangd
+.DS_Store
+Thumbs.db
