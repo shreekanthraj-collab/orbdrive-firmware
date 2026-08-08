@@ -52,17 +52,3 @@ uint64_t nfwTimeNowUs(void)
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 #endif
 }
-
-void nfwDelayMs(uint32_t milliseconds)
-{
-#if defined(_WIN32) || defined(_WIN64)
-    Sleep(milliseconds);
-#else
-    struct timespec req;
-    req.tv_sec = milliseconds / 1000U;
-    req.tv_nsec = (milliseconds % 1000U) * 1000000UL;
-    while (nanosleep(&req, &req) == -1 && errno == EINTR) {
-        ;
-    }
-#endif
-}

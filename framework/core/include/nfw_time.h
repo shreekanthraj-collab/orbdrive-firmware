@@ -33,12 +33,7 @@ uint32_t nfwTimeNowMs(void);
  */
 uint64_t nfwTimeNowUs(void);
 
-/**
- * @brief Delays execution for the specified milliseconds.
- *
- * @param milliseconds Delay duration.
- */
-void nfwDelayMs(uint32_t milliseconds);
+
 
 #ifdef __cplusplus
 }
