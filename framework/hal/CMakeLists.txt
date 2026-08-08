@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS
         "src/nfw_gpio.c"
+        "src/nfw_delay.c"
 
     INCLUDE_DIRS
         "include"
@@ -10,7 +11,4 @@ idf_component_register(
 
     REQUIRES
         driver
-
-    PRIV_REQUIRES
-        core
 )
