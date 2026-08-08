@@ -16,7 +16,6 @@ void conditionMonitorInit(ConditionMonitorContext_t *context)
     }
 
     context->voltage_state = VOLTAGE_STATE_NORMAL;
-
     context->voltage_bypass_start_ms = 0U;
 
     context->overcurrent_retry_count = 0U;
@@ -28,6 +27,7 @@ void conditionMonitorInit(ConditionMonitorContext_t *context)
     context->actuator_fault_active = false;
     context->disengagement_fault_active = false;
 }
+
 static VoltageConditionState_t conditionMonitorEvaluateVoltage(
     ConditionMonitorContext_t *context,
     float voltage_v,
@@ -134,4 +134,79 @@ static VoltageConditionState_t conditionMonitorEvaluateVoltage(
     }
 
     return context->voltage_state;
+}
+
+static void conditionMonitorBuildVoltageResult(
+    VoltageConditionState_t voltage_state,
+    ConditionMonitorResult_t *result)
+{
+    if (result == NULL)
+    {
+        return;
+    }
+
+    result->voltage_state = voltage_state;
+    result->fault = FAULT_CODE_NONE;
+    result->motor_stop_required = false;
+    result->lock_required = false;
+
+    switch (voltage_state)
+    {
+        case VOLTAGE_STATE_NORMAL:
+            result->state = CONDITION_STATE_NORMAL;
+            break;
+
+        case VOLTAGE_STATE_WARNING:
+            result->state = CONDITION_STATE_WARNING;
+            break;
+
+        case VOLTAGE_STATE_WAIT_BYPASS:
+            result->state = CONDITION_STATE_FAULT;
+            result->fault = FAULT_CODE_VOLTAGE;
+            result->motor_stop_required = true;
+            break;
+
+        case VOLTAGE_STATE_BYPASS_ACTIVE:
+            result->state = CONDITION_STATE_WARNING;
+            result->fault = FAULT_CODE_VOLTAGE;
+            break;
+
+        case VOLTAGE_STATE_LOCKED:
+            result->state = CONDITION_STATE_LOCKED;
+            result->fault = FAULT_CODE_LOCK;
+            result->motor_stop_required = true;
+            result->lock_required = true;
+            break;
+
+        default:
+            result->state = CONDITION_STATE_LOCKED;
+            result->fault = FAULT_CODE_LOCK;
+            result->motor_stop_required = true;
+            result->lock_required = true;
+            break;
+    }
+}
+
+void conditionMonitorEvaluate(
+    ConditionMonitorContext_t *context,
+    const ConditionMonitorInput_t *input,
+    uint32_t now_ms,
+    ConditionMonitorResult_t *result)
+{
+    if ((context == NULL) ||
+        (input == NULL) ||
+        (result == NULL))
+    {
+        return;
+    }
+
+    VoltageConditionState_t voltage_state =
+        conditionMonitorEvaluateVoltage(
+            context,
+            input->voltage_v,
+            now_ms);
+
+    conditionMonitorBuildVoltageResult(
+        voltage_state,
+        result);
 }
