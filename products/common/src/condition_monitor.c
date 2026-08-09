@@ -26,11 +26,6 @@ void conditionMonitorInit(ConditionMonitorContext_t *context)
     context->last_overcurrent = false;
     context->overcurrent_fault_active = false;
     context->force_close_pending = false;
-    context->actuator_last_movement_ms = 0U;
-    context->disengagement_start_ms = 0U;
-
-    context->actuator_fault_active = false;
-    context->disengagement_fault_active = false;
 }
 
 void conditionMonitorSetOvercurrentThreshold(
