@@ -1,4 +1,5 @@
 #include "condition_monitor.h"
+#include <stddef.h>
 
 #define CONDITION_WARN_V_LOW          12.0f
 #define CONDITION_WARN_V_HIGH         12.4f

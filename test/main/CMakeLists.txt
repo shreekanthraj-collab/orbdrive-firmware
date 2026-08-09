@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "test_main.c"
+        "../common/test_fault_manager.c"
+    INCLUDE_DIRS
+        "../common"
+    REQUIRES
+        unity
+        common
+)
