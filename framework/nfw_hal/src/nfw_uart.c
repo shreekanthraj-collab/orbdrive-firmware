@@ -1,8 +1,3 @@
-/**
- * @file nfw_uart.c
- * @brief ESP-IDF implementation of the Orb Drive UART HAL.
- */
-
 #include "nfw_uart.h"
 
 #include "driver/uart.h"
@@ -68,8 +63,8 @@ NfwStatus_t nfwUartInit(const NfwUartConfig_t *config)
         .baud_rate = (int)config->baudRate,
         .data_bits = dataBits,
         .parity = config->parityEnabled
-                       ? UART_PARITY_EVEN
-                       : UART_PARITY_DISABLE,
+                      ? UART_PARITY_EVEN
+                      : UART_PARITY_DISABLE,
         .stop_bits = stopBits,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,

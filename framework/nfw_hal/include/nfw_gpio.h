@@ -13,7 +13,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "nfw_types.h"
+#include "nfw_status.h"
 
 /* ============================================================================
  * GPIO Direction

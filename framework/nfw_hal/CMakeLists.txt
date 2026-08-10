@@ -10,6 +10,8 @@ idf_component_register(
     PRIV_INCLUDE_DIRS
         "private"
 
-    REQUIRES
-        driver
+   REQUIRES
+    core
+    driver
+    freertos
 )

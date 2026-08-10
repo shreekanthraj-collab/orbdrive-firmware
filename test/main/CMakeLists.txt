@@ -5,6 +5,9 @@ idf_component_register(
         "../../framework/core/test/test_nfw_lifecycle.c"
         "../../framework/platform/test/test_nfw_memory.c"
         "../../framework/platform/test/test_nfw_mutex.c"
+      "../../framework/nfw_hal/test/test_nfw_gpio.c"
+"../../framework/nfw_hal/test/test_nfw_uart.c"
+"../../framework/nfw_hal/test/test_nfw_delay.c"
     INCLUDE_DIRS
         "../common"
     REQUIRES
@@ -12,4 +15,5 @@ idf_component_register(
         common
         core
         platform
+        nfw_hal
 )
