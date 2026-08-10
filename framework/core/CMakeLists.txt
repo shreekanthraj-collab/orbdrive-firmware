@@ -9,6 +9,7 @@ idf_component_register(
         "src/nfw_assert.c"
         "src/nfw_version.c"
         "src/nfw_time.c"
+        "src/nfw_lifecycle.c"
 
     INCLUDE_DIRS
         "include"
