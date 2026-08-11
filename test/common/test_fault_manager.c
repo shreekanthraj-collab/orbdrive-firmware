@@ -105,7 +105,17 @@ TEST_CASE("Reporting NONE does not clear active fault", "[fault_manager]")
 
 	TEST_ASSERT_TRUE(context.fault_latched);
 }
+TEST_CASE("Clearing NONE does not clear active fault", "[fault_manager]")
+{
+    faultManagerReport(&context, FAULT_CODE_OVERCURRENT);
+    faultManagerClear(&context, FAULT_CODE_NONE);
 
+    TEST_ASSERT_EQUAL(
+        FAULT_CODE_OVERCURRENT,
+        faultManagerGetActive(&context));
+
+    TEST_ASSERT_TRUE(context.fault_latched);
+}
 TEST_CASE("NULL context is handled safely", "[fault_manager]")
 {
 	faultManagerInit(NULL);
