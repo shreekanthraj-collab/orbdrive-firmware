@@ -23,7 +23,9 @@ TEST_CASE("UART init rejects invalid data bits", "[nfw_uart]")
         .baudRate = 115200U,
         .dataBits = 4U,
         .stopBits = 1U,
-        .parityEnabled = false
+        .parityEnabled = false,
+.txPin = 15,
+.rxPin = 16
     };
 
     TEST_ASSERT_EQUAL(
@@ -38,7 +40,9 @@ TEST_CASE("UART init rejects invalid stop bits", "[nfw_uart]")
         .baudRate = 115200U,
         .dataBits = 8U,
         .stopBits = 3U,
-        .parityEnabled = false
+        .parityEnabled = false,
+.txPin = 15,
+.rxPin = 16
     };
 
     TEST_ASSERT_EQUAL(

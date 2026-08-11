@@ -80,15 +80,15 @@ NfwStatus_t nfwUartInit(const NfwUartConfig_t *config)
     }
 
     /*
-     * GPIO pin assignment is intentionally not performed here.
-     * Physical TX/RX routing belongs to the board definition layer.
-     */
-    err = uart_set_pin(
-        (uart_port_t)config->port,
-        UART_PIN_NO_CHANGE,
-        UART_PIN_NO_CHANGE,
-        UART_PIN_NO_CHANGE,
-        UART_PIN_NO_CHANGE);
+ * TX/RX routing is supplied by the board configuration.
+ * The UART HAL does not own board-specific pin definitions.
+ */
+   err = uart_set_pin(
+    (uart_port_t)config->port,
+   (int)config->txPin,
+(int)config->rxPin,
+    UART_PIN_NO_CHANGE,
+    UART_PIN_NO_CHANGE);
 
     if (err != ESP_OK)
     {
@@ -134,6 +134,21 @@ NfwStatus_t nfwUartWrite(
     return NFW_STATUS_OK;
 }
 
+NfwStatus_t nfwUartWaitTxDone(
+    uint32_t port,
+    uint32_t timeoutMs)
+{
+    esp_err_t err = uart_wait_tx_done(
+        (uart_port_t)port,
+        pdMS_TO_TICKS(timeoutMs));
+
+    if (err != ESP_OK)
+    {
+        return NFW_STATUS_ERROR;
+    }
+
+    return NFW_STATUS_OK;
+}
 NfwStatus_t nfwUartRead(
     uint32_t port,
     uint8_t *data,

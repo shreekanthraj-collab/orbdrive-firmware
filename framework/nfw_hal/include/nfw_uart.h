@@ -26,6 +26,8 @@ typedef struct
     uint8_t dataBits;
     uint8_t stopBits;
     bool parityEnabled;
+    int32_t txPin;
+    int32_t rxPin;
 } NfwUartConfig_t;
 
 /* ============================================================================
@@ -54,6 +56,19 @@ NfwStatus_t nfwUartWrite(
     uint32_t port,
     const uint8_t *data,
     uint32_t length
+);
+
+/**
+ * @brief Wait for the UART transmission to complete.
+ *
+ * @param port UART peripheral number.
+ * @param timeoutMs Maximum time to wait in milliseconds.
+ *
+ * @return NFW_STATUS_OK on success.
+ */
+NfwStatus_t nfwUartWaitTxDone(
+    uint32_t port,
+    uint32_t timeoutMs
 );
 
 /**
