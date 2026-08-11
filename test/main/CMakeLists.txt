@@ -3,6 +3,7 @@ idf_component_register(
         "test_main.c"
         "../common/test_fault_manager.c"
 "../common/test_condition_monitor.c"
+"../common/test_rs485.c"
         "../../framework/core/test/test_nfw_lifecycle.c"
         "../../framework/platform/test/test_nfw_memory.c"
         "../../framework/platform/test/test_nfw_mutex.c"
