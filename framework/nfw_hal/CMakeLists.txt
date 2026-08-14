@@ -3,6 +3,7 @@ idf_component_register(
         "src/nfw_gpio.c"
         "src/nfw_delay.c"
         "src/nfw_uart.c"
+        "src/nfw_pwm.c"
 
     INCLUDE_DIRS
         "include"
@@ -10,8 +11,8 @@ idf_component_register(
     PRIV_INCLUDE_DIRS
         "private"
 
-   REQUIRES
-    core
-    driver
-    freertos
+    REQUIRES
+        core
+        driver
+        freertos
 )
