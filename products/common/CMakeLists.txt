@@ -4,6 +4,8 @@ idf_component_register(
         "src/fault_manager.c"
         "src/rs485.c"
         "src/motor_controller.c"
+        "src/ina226.c"
+        "src/eol_storage.c"
 
     INCLUDE_DIRS
         "include"
@@ -14,4 +16,5 @@ idf_component_register(
     REQUIRES
         core
         nfw_hal
+        nvs_flash
 )

@@ -4,6 +4,7 @@ idf_component_register(
         "src/nfw_delay.c"
         "src/nfw_uart.c"
         "src/nfw_pwm.c"
+        "src/nfw_i2c.c"
 
     INCLUDE_DIRS
         "include"
