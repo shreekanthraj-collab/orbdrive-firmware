@@ -6,6 +6,11 @@ idf_component_register(
         "src/motor_controller.c"
         "src/ina226.c"
         "src/eol_storage.c"
+        "src/oc_config.c"
+        "src/voltage_config.c"
+        "src/lora_transport.c"
+        "src/modbus_rtu.c"
+        "src/flow_sensor.c"
 
     INCLUDE_DIRS
         "include"

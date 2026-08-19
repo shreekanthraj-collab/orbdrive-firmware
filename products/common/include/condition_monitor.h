@@ -34,6 +34,14 @@ typedef enum
 
 } VoltageConditionState_t;
 
+typedef enum
+{
+    OC_OPERATION_NONE = 0,
+    OC_OPERATION_OPEN,
+    OC_OPERATION_CLOSE
+
+} OcOperation_t;
+
 typedef struct
 {
     float voltage_v;
@@ -70,20 +78,59 @@ typedef struct
     VoltageConditionState_t voltage_state;
 
     uint32_t voltage_bypass_start_ms;
+    /*
+     * EOL/Gateway/NVS configurable voltage protection.
+     */
+    float voltage_warning_low_v;
+    float voltage_warning_high_v;
+    float voltage_cutoff_bypass_v;
+    float voltage_critical_v;
+    float voltage_reset_v;
 
+    uint32_t voltage_bypass_timeout_ms;
+
+    /*
+     * Gateway/NVS configurable OC limits.
+     */
     float overcurrent_base_threshold_a;
     float overcurrent_active_threshold_a;
 
+    float overcurrent_min_safe_current_a;
+    float overcurrent_max_safe_current_a;
+
+    /*
+     * Current escalation level.
+     *
+     * Starts at minimum safe current and increases by +1 A
+     * after all three attempts at the current level fail.
+     */
+    float overcurrent_current_level_a;
+
+    /*
+     * Retry state.
+     *
+     * Three attempts are allowed at every current level.
+     */
     uint8_t overcurrent_retry_count;
+    uint8_t overcurrent_attempt_count;
+
     uint32_t overcurrent_trip_ms;
+
+    /*
+     * Requested valve operation.
+     *
+     * The same OC protection sequence is used for both
+     * opening and closing.
+     */
+    OcOperation_t overcurrent_operation;
 
     bool last_overcurrent;
     bool overcurrent_fault_active;
     bool force_close_pending;
 
-   } ConditionMonitorContext_t;
+} ConditionMonitorContext_t;
 
- /**
+/**
  * @brief Initialize the condition monitor context.
  *
  * @param context Condition monitor context.
@@ -117,7 +164,6 @@ void conditionMonitorEvaluate(
     uint32_t now_ms,
     ConditionMonitorResult_t *result
 );
-
 
 #ifdef __cplusplus
 }

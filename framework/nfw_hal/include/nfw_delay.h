@@ -21,7 +21,8 @@ extern "C" {
  *
  * @return NFW_STATUS_OK on success.
  */
-NfwStatus_t nfwDelayMs(uint32_t milliseconds);
+NfwStatus_t nfwDelayMs(
+    uint32_t milliseconds);
 
 /**
  * @brief Delay execution for a number of microseconds.
@@ -30,7 +31,8 @@ NfwStatus_t nfwDelayMs(uint32_t milliseconds);
  *
  * @return NFW_STATUS_OK on success.
  */
-NfwStatus_t nfwDelayUs(uint32_t microseconds);
+NfwStatus_t nfwDelayUs(
+    uint32_t microseconds);
 
 #ifdef __cplusplus
 }

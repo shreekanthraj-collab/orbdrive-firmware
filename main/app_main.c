@@ -7,6 +7,9 @@
 
 #include "eol_storage.h"
 #include "ina226.h"
+#include "oc_config.h"
+#include "voltage_config.h"
+#include "lora_transport.h"
 #include "motor_controller.h"
 #include "nfw_i2c.h"
 #include "orb_drive_main.h"
@@ -24,6 +27,7 @@ void app_main(void)
     EolStorageData_t eolData;
     NfwI2cConfig_t i2cConfig;
     Ina226Config_t inaConfig;
+    LoraTransportConfig_t loraConfig;
 
     float shuntResistanceOhm;
     uint16_t ina226Calibration;
@@ -52,6 +56,77 @@ void app_main(void)
     }
 
     printf("EOL storage initialization: PASS\n");
+
+    /* ========================================================================
+     * 1A. Initialize Gateway-configurable OC configuration
+     * ====================================================================== */
+
+    status = ocConfigInit();
+
+    if (status != NFW_STATUS_OK) {
+        printf("OC configuration initialization FAILED: %d\n",
+               (int)status);
+        return;
+    }
+
+    printf("OC configuration initialization: PASS\n");
+
+    /* ========================================================================
+     * 1B. Initialize Gateway-configurable voltage configuration
+     * ====================================================================== */
+
+    status = voltageConfigInit();
+
+    if (status != NFW_STATUS_OK) {
+        printf("Voltage configuration initialization FAILED: %d\n",
+               (int)status);
+        return;
+    }
+
+    printf("Voltage configuration initialization: PASS\n");
+
+    /* ========================================================================
+     * 1C. Initialize SX1262 LoRa transport
+     *
+     * LoRa is the Node <-> Gateway transport layer.
+     * RS-485 remains dedicated to the flow sensors.
+     * ====================================================================== */
+
+    loraConfig.spiHost =
+        2U; /* ESP32-S3 SPI3_HOST */
+
+    loraConfig.frequencyHz =
+        LORA_TRANSPORT_DEFAULT_FREQUENCY_HZ;
+
+    loraConfig.bandwidth =
+        LORA_TRANSPORT_DEFAULT_BANDWIDTH;
+
+    loraConfig.spreadingFactor =
+        LORA_TRANSPORT_DEFAULT_SPREADING_FACTOR;
+
+    loraConfig.codingRate =
+        LORA_TRANSPORT_DEFAULT_CODING_RATE;
+
+    loraConfig.txPowerDbm =
+        LORA_TRANSPORT_DEFAULT_TX_POWER_DBM;
+
+    status = loraTransportInit(
+        &loraConfig);
+
+    if (status != NFW_STATUS_OK) {
+        printf("LoRa SX1262 initialization FAILED: %d\n",
+               (int)status);
+        return;
+    }
+
+    printf("LoRa SX1262 initialization: PASS\n");
+    printf("LoRa SPI host: SPI3\n");
+    printf("LoRa frequency: %lu Hz\n",
+           (unsigned long)loraConfig.frequencyHz);
+    printf("LoRa spreading factor: %u\n",
+           (unsigned)loraConfig.spreadingFactor);
+    printf("LoRa TX power: %d dBm\n",
+           (int)loraConfig.txPowerDbm);
 
     /* ========================================================================
      * 2. Determine current shunt configuration
