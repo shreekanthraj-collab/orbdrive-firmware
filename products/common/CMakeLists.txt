@@ -1,5 +1,7 @@
 idf_component_register(
     SRCS
+    "src/as5600.c"
+"src/valve_position.c"
         "src/condition_monitor.c"
         "src/fault_manager.c"
         "src/rs485.c"
