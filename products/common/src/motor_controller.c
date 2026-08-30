@@ -26,6 +26,19 @@
  *        ->
  *   STOPPED
  *
+ * EMERGENCY STOP:
+ *   Power relay OFF
+ *        ->
+ *   PWM = 0%
+ *        ->
+ *   PWM OFF
+ *        ->
+ *   Direction relay OFF
+ *        ->
+ *   STOPPED
+ *        ->
+ *   Emergency-stop latch ACTIVE
+ *
  * The ramp is non-blocking. motorControllerProcess() advances
  * the state machine using nfwTimeNowMs().
  */
@@ -70,6 +83,18 @@ static const uint32_t s_ramp_duty_percent[MOTOR_RAMP_STEP_COUNT + 1U] =
  * ========================================================================== */
 
 static bool s_initialized = false;
+
+/*
+ * Software emergency-stop latch.
+ *
+ * When true:
+ *   - motor start requests are rejected
+ *   - motor remains in safe stopped state
+ *   - power relay remains OFF
+ *   - direction relays remain OFF
+ *   - PWM remains disabled
+ */
+static bool s_emergency_stopped = false;
 
 static MotorState_t s_state = MOTOR_STATE_STOPPED;
 
@@ -277,6 +302,13 @@ NfwStatus_t motorControllerInit(void)
     s_duty_percent = ORB_MOTOR_DUTY_0_PERCENT;
     s_ramp_index = 0U;
     s_last_ramp_time_ms = 0U;
+
+    /*
+     * Emergency stop is a runtime latch.
+     * Every fresh initialization starts with E-stop cleared.
+     */
+    s_emergency_stopped = false;
+
     s_initialized = true;
 
     return NFW_STATUS_OK;
@@ -287,6 +319,14 @@ NfwStatus_t motorControllerStart(MotorDirection_t direction)
     NfwStatus_t status;
 
     if (!s_initialized)
+    {
+        return NFW_STATUS_INVALID_STATE;
+    }
+
+    /*
+     * Emergency stop has priority over all normal start requests.
+     */
+    if (s_emergency_stopped)
     {
         return NFW_STATUS_INVALID_STATE;
     }
@@ -428,6 +468,139 @@ NfwStatus_t motorControllerStop(void)
     return NFW_STATUS_OK;
 }
 
+/* ============================================================================
+ * Software Emergency Stop
+ * ========================================================================== */
+
+NfwStatus_t motorControllerEmergencyStop(void)
+{
+    NfwStatus_t status;
+
+    if (!s_initialized)
+    {
+        return NFW_STATUS_INVALID_STATE;
+    }
+
+    /*
+     * Latch E-stop first.
+     *
+     * This ensures that even if a later hardware operation fails,
+     * subsequent motor start requests remain blocked.
+     */
+    s_emergency_stopped = true;
+
+    /*
+     * Immediately remove motor power.
+     */
+    status = motorPowerOff();
+
+    if (status != NFW_STATUS_OK)
+    {
+        return status;
+    }
+
+    /*
+     * Immediately command PWM to zero.
+     */
+    status = motorSetDuty(
+        ORB_MOTOR_DUTY_0_PERCENT);
+
+    if (status != NFW_STATUS_OK)
+    {
+        return status;
+    }
+
+    /*
+     * Disable PWM output.
+     */
+    status = nfwPwmDisable();
+
+    if (status != NFW_STATUS_OK)
+    {
+        return status;
+    }
+
+    /*
+     * Immediately remove both direction outputs.
+     */
+    status = motorDirectionOff();
+
+    if (status != NFW_STATUS_OK)
+    {
+        return status;
+    }
+
+    /*
+     * Force the software state machine into the safe stopped state.
+     */
+    s_state = MOTOR_STATE_STOPPED;
+    s_direction = MOTOR_DIRECTION_NONE;
+    s_duty_percent = ORB_MOTOR_DUTY_0_PERCENT;
+    s_ramp_index = 0U;
+    s_last_ramp_time_ms = 0U;
+
+    return NFW_STATUS_OK;
+}
+
+bool motorControllerIsEmergencyStopped(void)
+{
+    return s_emergency_stopped;
+}
+
+NfwStatus_t motorControllerClearEmergencyStop(void)
+{
+    if (!s_initialized)
+    {
+        return NFW_STATUS_INVALID_STATE;
+    }
+
+    /*
+     * Do not clear E-stop while the motor state machine is active.
+     */
+    if (s_state != MOTOR_STATE_STOPPED)
+    {
+        return NFW_STATUS_BUSY;
+    }
+
+    /*
+     * Ensure the physical outputs remain in the safe state
+     * before releasing the software latch.
+     */
+    if (motorPowerOff() != NFW_STATUS_OK)
+    {
+        return NFW_STATUS_ERROR;
+    }
+
+    if (motorSetDuty(ORB_MOTOR_DUTY_0_PERCENT) != NFW_STATUS_OK)
+    {
+        return NFW_STATUS_ERROR;
+    }
+
+    if (nfwPwmDisable() != NFW_STATUS_OK)
+    {
+        return NFW_STATUS_ERROR;
+    }
+
+    if (motorDirectionOff() != NFW_STATUS_OK)
+    {
+        return NFW_STATUS_ERROR;
+    }
+
+    s_state = MOTOR_STATE_STOPPED;
+    s_direction = MOTOR_DIRECTION_NONE;
+    s_duty_percent = ORB_MOTOR_DUTY_0_PERCENT;
+    s_ramp_index = 0U;
+    s_last_ramp_time_ms = 0U;
+
+    /*
+     * Clearing E-stop only permits a future normal Start command.
+     * It does NOT start the motor.
+     */
+    s_emergency_stopped = false;
+
+    return NFW_STATUS_OK;
+}
+
 NfwStatus_t motorControllerProcess(void)
 {
     uint32_t now_ms;
@@ -437,6 +610,51 @@ NfwStatus_t motorControllerProcess(void)
     if (!s_initialized)
     {
         return NFW_STATUS_INVALID_STATE;
+    }
+
+    /*
+     * Emergency stop has highest priority.
+     *
+     * Keep the hardware in the safe state even if Process() continues
+     * to be called after an emergency stop.
+     */
+    if (s_emergency_stopped)
+    {
+        status = motorPowerOff();
+
+        if (status != NFW_STATUS_OK)
+        {
+            return status;
+        }
+
+        status = motorSetDuty(
+            ORB_MOTOR_DUTY_0_PERCENT);
+
+        if (status != NFW_STATUS_OK)
+        {
+            return status;
+        }
+
+        status = nfwPwmDisable();
+
+        if (status != NFW_STATUS_OK)
+        {
+            return status;
+        }
+
+        status = motorDirectionOff();
+
+        if (status != NFW_STATUS_OK)
+        {
+            return status;
+        }
+
+        s_state = MOTOR_STATE_STOPPED;
+        s_direction = MOTOR_DIRECTION_NONE;
+        s_duty_percent = ORB_MOTOR_DUTY_0_PERCENT;
+        s_ramp_index = 0U;
+
+        return NFW_STATUS_OK;
     }
 
     if (s_state != MOTOR_STATE_RAMPING_UP &&

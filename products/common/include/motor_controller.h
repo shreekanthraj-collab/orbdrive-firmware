@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "nfw_status.h"
@@ -48,6 +49,7 @@ typedef enum
  *   Power relay    OFF
  *   Direction      OFF
  *   PWM            0%
+ *   Emergency stop NOT active
  *
  * @return NFW_STATUS_OK on success.
  */
@@ -62,29 +64,78 @@ NfwStatus_t motorControllerInit(void);
  *   Power relay ON
  *   RUNNING
  *
+ * Motor start is rejected while the software emergency-stop
+ * latch is active.
+ *
  * @param direction Requested motor direction.
  *
  * @return NFW_STATUS_OK on success.
+ * @return NFW_STATUS_INVALID_ARGUMENT for invalid direction.
+ * @return NFW_STATUS_INVALID_STATE when emergency stop is active
+ *         or motor cannot be started.
  */
 NfwStatus_t motorControllerStart(MotorDirection_t direction);
 
 /**
  * @brief Request motor stop.
  *
- * Sequence:
+ * Normal controlled stop sequence:
  *   Power relay OFF
  *   PWM ramp 100 -> 0%
  *   PWM OFF
  *   Direction OFF
+ *
+ * This is NOT an emergency stop.
  *
  * @return NFW_STATUS_OK on success.
  */
 NfwStatus_t motorControllerStop(void);
 
 /**
+ * @brief Execute an immediate software emergency stop.
+ *
+ * Emergency stop has priority over normal motor operation.
+ *
+ * Immediate safe-state behavior:
+ *   Power relay OFF
+ *   PWM = 0%
+ *   PWM disabled
+ *   Direction relays OFF
+ *   Motor state STOPPED
+ *   Emergency-stop latch ACTIVE
+ *
+ * The emergency-stop latch prevents subsequent motor starts
+ * until motorControllerClearEmergencyStop() is called.
+ *
+ * @return NFW_STATUS_OK on success.
+ */
+NfwStatus_t motorControllerEmergencyStop(void);
+
+/**
+ * @brief Check whether the software emergency stop is active.
+ *
+ * @return true when emergency stop is latched.
+ * @return false when emergency stop is not active.
+ */
+bool motorControllerIsEmergencyStopped(void);
+
+/**
+ * @brief Clear the software emergency-stop latch.
+ *
+ * Clearing the emergency-stop latch does NOT start the motor.
+ * A separate motorControllerStart() request is required.
+ *
+ * @return NFW_STATUS_OK on success.
+ */
+NfwStatus_t motorControllerClearEmergencyStop(void);
+
+/**
  * @brief Process the motor state machine.
  *
  * This function is non-blocking and should be called periodically.
+ *
+ * When emergency stop is active, the motor remains in the safe
+ * stopped state regardless of normal state-machine processing.
  *
  * @return NFW_STATUS_OK on success.
  */
