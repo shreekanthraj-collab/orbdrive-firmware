@@ -13,6 +13,7 @@ idf_component_register(
         "src/lora_transport.c"
         "src/modbus_rtu.c"
         "src/flow_sensor.c"
+        "src/gw_protocol.c"
 
     INCLUDE_DIRS
         "include"
