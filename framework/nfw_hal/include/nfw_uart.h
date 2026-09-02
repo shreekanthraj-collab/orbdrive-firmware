@@ -78,6 +78,7 @@ NfwStatus_t nfwUartWaitTxDone(
  * @param data Destination buffer.
  * @param length Maximum number of bytes to read.
  * @param bytesRead Number of bytes actually received.
+ * @param timeoutMs Maximum time to wait for received bytes.
  *
  * @return NFW_STATUS_OK on success.
  */
@@ -85,7 +86,8 @@ NfwStatus_t nfwUartRead(
     uint32_t port,
     uint8_t *data,
     uint32_t length,
-    uint32_t *bytesRead
+    uint32_t *bytesRead,
+    uint32_t timeoutMs
 );
 
 /**

@@ -71,7 +71,8 @@ NfwStatus_t rs485Transmit(
 NfwStatus_t rs485Receive(
     uint8_t *data,
     uint32_t length,
-    uint32_t *bytes_read);
+    uint32_t *bytes_read,
+    uint32_t timeout_ms);
 
 /**
  * @brief Deinitialize the RS-485 interface.

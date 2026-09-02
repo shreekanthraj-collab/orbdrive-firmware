@@ -108,7 +108,8 @@ NfwStatus_t rs485Transmit(
 NfwStatus_t rs485Receive(
     uint8_t *data,
     uint32_t length,
-    uint32_t *bytes_read)
+    uint32_t *bytes_read,
+    uint32_t timeout_ms)
 {
     if (!s_initialized)
     {
@@ -121,10 +122,11 @@ NfwStatus_t rs485Receive(
     }
 
     return nfwUartRead(
-        s_uart_port,
-        data,
-        length,
-        bytes_read);
+    s_uart_port,
+    data,
+    length,
+    bytes_read,
+    timeout_ms);
 }
 
 NfwStatus_t rs485Deinit(void)

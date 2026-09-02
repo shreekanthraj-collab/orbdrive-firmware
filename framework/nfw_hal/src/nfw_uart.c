@@ -153,7 +153,8 @@ NfwStatus_t nfwUartRead(
     uint32_t port,
     uint8_t *data,
     uint32_t length,
-    uint32_t *bytesRead)
+    uint32_t *bytesRead,
+    uint32_t timeoutMs)
 {
     if (data == NULL || bytesRead == NULL || length == 0U)
     {
@@ -164,7 +165,7 @@ NfwStatus_t nfwUartRead(
         (uart_port_t)port,
         data,
         length,
-        0);
+        pdMS_TO_TICKS(timeoutMs));
 
     if (received < 0)
     {

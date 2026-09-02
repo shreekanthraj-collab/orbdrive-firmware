@@ -170,10 +170,11 @@ NfwStatus_t modbusRtuReadHoldingRegisters(
     }
 
     status =
-        rs485Receive(
-            response,
-            expected_length,
-            &bytes_read);
+    rs485Receive(
+        response,
+        expected_length,
+        &bytes_read,
+        device->response_timeout_ms);
 
     if (status != NFW_STATUS_OK)
     {
