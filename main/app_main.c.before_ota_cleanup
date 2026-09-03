@@ -4,10 +4,8 @@
  */
 
 #include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <stdbool.h>
+
 #include "esp_ota_ops.h"
 
 #include "eol_storage.h"
@@ -17,53 +15,7 @@
 #include "lora_transport.h"
 #include "motor_controller.h"
 #include "nfw_i2c.h"
-#include "nfw_gpio.h"
 #include "orb_drive_main.h"
-
-/* ============================================================================
- * OTA buzzer
- * ========================================================================== */
-
-#define OTA_BUZZER_ON_LEVEL       (false)
-#define OTA_BUZZER_OFF_LEVEL      (true)
-
-static void otaBuzzerInit(void)
-{
-    NfwGpioConfig_t config;
-
-    config.pin = ORB_GPIO_BUZZER;
-    config.direction = NFW_GPIO_DIRECTION_OUTPUT;
-    config.pull = NFW_GPIO_PULL_NONE;
-    config.initialLevel = OTA_BUZZER_OFF_LEVEL;
-
-    (void)nfwGpioInit(&config);
-}
-
-static void otaBuzzerPending(void)
-{
-    /* Two short beeps indicate a new OTA image is pending verification. */
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_ON_LEVEL);
-    vTaskDelay(pdMS_TO_TICKS(100U));
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_OFF_LEVEL);
-    vTaskDelay(pdMS_TO_TICKS(100U));
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_ON_LEVEL);
-    vTaskDelay(pdMS_TO_TICKS(100U));
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_OFF_LEVEL);
-}
-
-static void otaBuzzerValid(void)
-{
-    /* One long beep indicates the OTA image was accepted as valid. */
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_ON_LEVEL);
-    vTaskDelay(pdMS_TO_TICKS(300U));
-
-    (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_OFF_LEVEL);
-}
 
 /* ============================================================================
  * Application startup
@@ -86,7 +38,6 @@ void app_main(void)
 
     const esp_partition_t *runningPartition;
     esp_ota_img_states_t otaState;
-    bool otaPendingVerify = false;
 
     bool eolReady = false;
 
@@ -99,14 +50,8 @@ void app_main(void)
     printf("=====================================\n");
 
     /* =========================================================================
-     * OTA buzzer initialization
-     * ======================================================================= */
-
-    otaBuzzerInit();
-
-    /* =========================================================================
-     * OTA rollback validation
-     * ======================================================================= */
+     * 0. OTA rollback validation
+     * ========================================================================= */
 
     runningPartition = esp_ota_get_running_partition();
 
@@ -114,30 +59,21 @@ void app_main(void)
         esp_ota_get_state_partition(runningPartition, &otaState) == ESP_OK) {
 
         if (otaState == ESP_OTA_IMG_PENDING_VERIFY) {
-            otaPendingVerify = true;
 
             printf("OTA image state: PENDING_VERIFY\n");
             printf("OTA rollback validation in progress.\n");
-
-            otaBuzzerPending();
         }
     }
 
     /* =========================================================================
      * 1. Initialize EOL/NVS storage
-     * ======================================================================= */
+     * ========================================================================= */
 
     status = eolStorageInit();
 
     if (status != NFW_STATUS_OK) {
         printf("EOL storage initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
-
         return;
     }
 
@@ -145,19 +81,13 @@ void app_main(void)
 
     /* =========================================================================
      * 1A. Initialize Gateway-configurable OC configuration
-     * ======================================================================= */
+     * ========================================================================= */
 
     status = ocConfigInit();
 
     if (status != NFW_STATUS_OK) {
         printf("OC configuration initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
-
         return;
     }
 
@@ -165,19 +95,13 @@ void app_main(void)
 
     /* =========================================================================
      * 1B. Initialize Gateway-configurable voltage configuration
-     * ======================================================================= */
+     * ========================================================================= */
 
     status = voltageConfigInit();
 
     if (status != NFW_STATUS_OK) {
         printf("Voltage configuration initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
-
         return;
     }
 
@@ -188,9 +112,10 @@ void app_main(void)
      *
      * LoRa is the Node <-> Gateway transport layer.
      * RS-485 remains dedicated to the flow sensors.
-     * ======================================================================= */
+     * ========================================================================= */
 
-    loraConfig.spiHost = 2U;
+    loraConfig.spiHost =
+        2U; /* ESP32-S3 SPI3_HOST */
 
     loraConfig.frequencyHz =
         LORA_TRANSPORT_DEFAULT_FREQUENCY_HZ;
@@ -212,12 +137,6 @@ void app_main(void)
     if (status != NFW_STATUS_OK) {
         printf("LoRa SX1262 initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
-
         return;
     }
 
@@ -232,25 +151,32 @@ void app_main(void)
 
     /* =========================================================================
      * 2. Determine current shunt configuration
-     * ======================================================================= */
+     * ========================================================================= */
 
     eolStatus = eolStorageLoad(&eolData);
 
     if (eolStatus == NFW_STATUS_OK) {
-        shuntResistanceOhm = eolData.shuntResistanceOhm;
+
+        shuntResistanceOhm =
+            eolData.shuntResistanceOhm;
+
     } else {
-        shuntResistanceOhm = EOL_STORAGE_DEFAULT_RSHUNT_OHM;
+
+        shuntResistanceOhm =
+            EOL_STORAGE_DEFAULT_RSHUNT_OHM;
+
         eolData.ina226Calibration = 0U;
     }
 
     if (shuntResistanceOhm <= 0.0f) {
+
         shuntResistanceOhm =
             EOL_STORAGE_DEFAULT_RSHUNT_OHM;
     }
 
     /* =========================================================================
      * 3. Calculate and validate hardware/configuration fingerprint
-     * ======================================================================= */
+     * ========================================================================= */
 
     hardwareFingerprint =
         eolStorageCalculateHardwareFingerprint(
@@ -261,14 +187,16 @@ void app_main(void)
             hardwareFingerprint);
 
     if (eolValidationStatus == NFW_STATUS_OK) {
+
         eolReady = true;
 
         printf("EOL validation: PASS\n");
         printf("EOL Rshunt: %.6f ohm\n",
                shuntResistanceOhm);
 
-        status = eolStorageGetIna226Calibration(
-            &ina226Calibration);
+        status =
+            eolStorageGetIna226Calibration(
+                &ina226Calibration);
 
         if (status != NFW_STATUS_OK ||
             ina226Calibration == 0U) {
@@ -277,7 +205,9 @@ void app_main(void)
 
             printf("EOL calibration data: INVALID\n");
         }
+
     } else {
+
         eolReady = false;
         ina226Calibration = 0U;
 
@@ -288,38 +218,45 @@ void app_main(void)
 
     /* =========================================================================
      * 4. Initialize I2C
-     * ======================================================================= */
+     * ========================================================================= */
 
-    i2cConfig.port = ORB_I2C_PORT;
-    i2cConfig.sdaPin = ORB_I2C_SDA_GPIO;
-    i2cConfig.sclPin = ORB_I2C_SCL_GPIO;
-    i2cConfig.frequencyHz = ORB_I2C_FREQUENCY_HZ;
+    i2cConfig.port =
+        ORB_I2C_PORT;
 
-    status = nfwI2cInit(&i2cConfig);
+    i2cConfig.sdaPin =
+        ORB_I2C_SDA_GPIO;
+
+    i2cConfig.sclPin =
+        ORB_I2C_SCL_GPIO;
+
+    i2cConfig.frequencyHz =
+        ORB_I2C_FREQUENCY_HZ;
+
+    status =
+        nfwI2cInit(&i2cConfig);
 
     if (status != NFW_STATUS_OK) {
+
         printf("I2C initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
 
         return;
     }
 
     printf("I2C initialization: PASS\n");
+
     printf("I2C SDA: GPIO%u\n",
            (unsigned)ORB_I2C_SDA_GPIO);
+
     printf("I2C SCL: GPIO%u\n",
            (unsigned)ORB_I2C_SCL_GPIO);
+
     printf("I2C frequency: %u Hz\n",
            (unsigned)ORB_I2C_FREQUENCY_HZ);
 
     /* =========================================================================
      * 5. Initialize INA226
-     * ======================================================================= */
+     * ========================================================================= */
 
     inaConfig.i2cAddress =
         ORB_INA226_I2C_ADDRESS;
@@ -330,50 +267,57 @@ void app_main(void)
     inaConfig.maximumExpectedCurrentA =
         ORB_INA226_MAX_CURRENT_A;
 
+    /*
+     * Only use the persisted INA226 calibration when EOL validation passed.
+     *
+     * When EOL is required, calibrationRegister remains zero and ina226Init()
+     * calculates a commissioning/default calibration instead.
+     * This does NOT make the unit EOL-valid.
+     */
+
     inaConfig.calibrationRegister =
         eolReady ? ina226Calibration : 0U;
 
-    status = ina226Init(&inaConfig);
+    status =
+        ina226Init(&inaConfig);
 
     if (status != NFW_STATUS_OK) {
+
         printf("INA226 initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
 
         return;
     }
 
     printf("INA226 initialization: PASS\n");
+
     printf("INA226 address: 0x%02X\n",
            (unsigned)ORB_INA226_I2C_ADDRESS);
+
     printf("INA226 Rshunt: %.6f ohm\n",
            shuntResistanceOhm);
 
     if (eolReady) {
+
         printf("INA226 calibration source: EOL/NVS\n");
+
     } else {
+
         printf("INA226 calibration source: DEFAULT/COMMISSIONING\n");
         printf("WARNING: EOL calibration is REQUIRED.\n");
     }
 
     /* =========================================================================
      * 6. Initialize motor controller
-     * ======================================================================= */
+     * ========================================================================= */
 
-    status = motorControllerInit();
+    status =
+        motorControllerInit();
 
     if (status != NFW_STATUS_OK) {
+
         printf("Motor controller initialization FAILED: %d\n",
                (int)status);
-
-        if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\n");
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-        }
 
         return;
     }
@@ -383,34 +327,50 @@ void app_main(void)
     printf("Motor PWM: 0%%\n");
 
     /* =========================================================================
-     * OTA image acceptance
-     * ======================================================================= */
+     * 7. OTA image validation
+     *
+     * Only mark the new OTA image valid after the essential application
+     * initialization has succeeded.
+     * ========================================================================= */
 
-    if (otaPendingVerify) {
-        if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {
-            printf("OTA rollback validation: PASS\n");
-            printf("OTA image marked VALID.\n");
+    if (runningPartition != NULL &&
+        esp_ota_get_state_partition(
+            runningPartition,
+            &otaState) == ESP_OK) {
 
-            otaBuzzerValid();
-        } else {
-            printf("OTA rollback validation: FAILED\n");
-            printf("OTA image will be rolled back.\n");
+        if (otaState == ESP_OTA_IMG_PENDING_VERIFY) {
 
-            esp_ota_mark_app_invalid_rollback_and_reboot();
-            return;
+            status =
+                (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK)
+                ? NFW_STATUS_OK
+                : NFW_STATUS_ERROR;
+
+            if (status == NFW_STATUS_OK) {
+
+                printf("OTA rollback validation: PASS\n");
+                printf("OTA image marked VALID.\n");
+
+            } else {
+
+                printf("OTA rollback validation: FAILED\n");
+                printf("OTA image remains subject to rollback.\n");
+            }
         }
     }
 
     /* =========================================================================
      * Final startup status
-     * ======================================================================= */
+     * ========================================================================= */
 
     printf("-------------------------------------\n");
 
     if (eolReady) {
+
         printf("EOL STATUS: VALID\n");
         printf("Startup status: READY\n");
+
     } else {
+
         printf("EOL STATUS: REQUIRED\n");
         printf("Startup status: COMMISSIONING REQUIRED\n");
     }

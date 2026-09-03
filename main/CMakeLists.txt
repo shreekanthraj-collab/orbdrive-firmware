@@ -8,8 +8,11 @@ idf_component_register(
     PRIV_INCLUDE_DIRS
         "../boards/orb_drive_main"
 
+    # Required components
+    # Add/remove dependencies here when needed.
     REQUIRES
         core
         nfw_hal
         common
+        app_update
 )
