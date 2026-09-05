@@ -19,6 +19,9 @@
 #include "nfw_gpio.h"
 #include "orb_drive_main.h"
 
+#include "ota_wifi_ap.h"
+#include "ota_server.h"
+
 /* ============================================================================
  * OTA buzzer
  * ========================================================================== */
@@ -399,6 +402,31 @@ void app_main(void)
             return;
         }
     }
+    /* =========================================================================
+     * OTA Wi-Fi AP and HTTP server
+     * ======================================================================= */
+
+    status = otaWifiApInit();
+
+    if (status != NFW_STATUS_OK) {
+        printf("OTA Wi-Fi AP initialization FAILED: %d\n",
+               (int)status);
+        return;
+    }
+
+    printf("OTA Wi-Fi AP initialization: PASS\n");
+
+    status = otaServerStart();
+
+    if (status != NFW_STATUS_OK) {
+        printf("OTA HTTP server initialization FAILED: %d\n",
+               (int)status);
+
+        (void)otaWifiApStop();
+        return;
+    }
+
+    printf("OTA HTTP server initialization: PASS\n");
 
     /* =========================================================================
      * Final startup status
