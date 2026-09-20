@@ -28,7 +28,9 @@ static bool gwProtocolIsValidCommand(
            (command == GW_COMMAND_CLEAR_EMERGENCY_STOP) ||
            (command == GW_COMMAND_GET_TELEMETRY) ||
            (command == GW_COMMAND_SET_OC_CONFIG) ||
-           (command == GW_COMMAND_SET_VOLTAGE_CONFIG);
+           (command == GW_COMMAND_SET_VOLTAGE_CONFIG) ||
+           (command == GW_COMMAND_VOLTAGE_BYPASS) ||
+           (command == GW_COMMAND_VOLTAGE_CANCEL);
 }
 
 static void gwProtocolWriteU16(
