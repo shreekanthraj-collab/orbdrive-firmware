@@ -5,6 +5,8 @@
 
 #include "gw_legacy_telemetry.h"
 
+#include <stddef.h>
+
 #include "lora_transport.h"
 
 static void putU16(
