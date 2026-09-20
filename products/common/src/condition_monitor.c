@@ -144,6 +144,55 @@ void conditionMonitorSetOvercurrentThreshold(
 }
 
 /* ============================================================================
+ * Voltage bypass control API
+ * ========================================================================== */
+
+bool conditionMonitorActivateVoltageBypass(
+    ConditionMonitorContext_t *context)
+{
+    if (context == NULL)
+    {
+        return false;
+    }
+
+    if (context->voltage_state != VOLTAGE_STATE_WAIT_BYPASS)
+    {
+        return false;
+    }
+
+    context->voltage_state =
+        VOLTAGE_STATE_BYPASS_ACTIVE;
+
+    context->voltage_bypass_start_ms =
+        0U;
+
+    return true;
+}
+
+bool conditionMonitorCancelVoltageBypass(
+    ConditionMonitorContext_t *context)
+{
+    if (context == NULL)
+    {
+        return false;
+    }
+
+    if ((context->voltage_state != VOLTAGE_STATE_WAIT_BYPASS) &&
+        (context->voltage_state != VOLTAGE_STATE_BYPASS_ACTIVE))
+    {
+        return false;
+    }
+
+    context->voltage_state =
+        VOLTAGE_STATE_NORMAL;
+
+    context->voltage_bypass_start_ms =
+        0U;
+
+    return true;
+}
+
+/* ============================================================================
  * Voltage monitoring
  * ========================================================================== */
 
