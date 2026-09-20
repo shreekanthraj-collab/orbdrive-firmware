@@ -1,12 +1,9 @@
 /**
  * @file gw_legacy_telemetry.c
- * @brief LoRa Node -> Municipal Gateway telemetry implementation.
+ * @brief LoRa Node -> Municipal Gateway telemetry/event implementation.
  */
 
 #include "gw_legacy_telemetry.h"
-
-#include <stddef.h>
-#include <string.h>
 
 #include "lora_transport.h"
 
@@ -65,21 +62,6 @@ NfwStatus_t gwLegacyTelemetryBuild(
         return NFW_STATUS_INVALID_ARGUMENT;
     }
 
-    /*
-     * Exact wire layout of Gateway GwLoRaStatus_t:
-     *
-     *  0 node
-     *  1 type
-     *  2 sequence
-     *  3 motor_state
-     *  4 fault_flags
-     *  5..6   turns100      (little-endian)
-     *  7..8   voltage100    (little-endian)
-     *  9..10  current100    (little-endian)
-     * 11 rssi
-     * 12 gateway_id
-     * 13 crc8
-     */
     packet[0] = sample->node;
     packet[1] = GW_TELEMETRY_PACKET_TYPE;
     packet[2] = sample->sequence;
@@ -92,11 +74,7 @@ NfwStatus_t gwLegacyTelemetryBuild(
 
     packet[11] = (uint8_t)sample->rssi;
     packet[12] = sample->gateway_id;
-
-    packet[13] =
-        gwLegacyTelemetryCrc8(
-            packet,
-            13U);
+    packet[13] = gwLegacyTelemetryCrc8(packet, 13U);
 
     return NFW_STATUS_OK;
 }
@@ -109,6 +87,58 @@ NfwStatus_t gwLegacyTelemetrySend(
     NfwStatus_t status;
 
     status = gwLegacyTelemetryBuild(
+        sample,
+        packet,
+        sizeof(packet));
+
+    if (status != NFW_STATUS_OK)
+    {
+        return status;
+    }
+
+    return loraTransportTransmit(
+        packet,
+        sizeof(packet),
+        timeoutMs);
+}
+
+NfwStatus_t gwLegacyEventBuild(
+    const GwLegacyEventSample_t *sample,
+    uint8_t *packet,
+    uint32_t packetLength)
+{
+    if (sample == NULL || packet == NULL)
+    {
+        return NFW_STATUS_INVALID_ARGUMENT;
+    }
+
+    if (packetLength < GW_EVENT_PACKET_LENGTH)
+    {
+        return NFW_STATUS_INVALID_ARGUMENT;
+    }
+
+    packet[0] = sample->node;
+    packet[1] = GW_EVENT_PACKET_TYPE;
+    packet[2] = sample->sequence;
+    packet[3] = sample->event;
+
+    putU16(&packet[4], sample->voltage100);
+    putU16(&packet[6], sample->current100);
+
+    packet[8] = sample->gateway_id;
+    packet[9] = gwLegacyTelemetryCrc8(packet, 9U);
+
+    return NFW_STATUS_OK;
+}
+
+NfwStatus_t gwLegacyEventSend(
+    const GwLegacyEventSample_t *sample,
+    uint32_t timeoutMs)
+{
+    uint8_t packet[GW_EVENT_PACKET_LENGTH];
+    NfwStatus_t status;
+
+    status = gwLegacyEventBuild(
         sample,
         packet,
         sizeof(packet));
