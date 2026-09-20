@@ -65,16 +65,15 @@ TEST_CASE("Bypass wait remains active before timeout", "[condition_monitor]")
     TEST_ASSERT_EQUAL(VOLTAGE_STATE_WAIT_BYPASS, result.voltage_state);
 }
 
-TEST_CASE("Bypass wait locks at timeout", "[condition_monitor]")
+TEST_CASE("Bypass wait activates bypass at timeout", "[condition_monitor]")
 {
     input.voltage_v = 11.5f;
     conditionMonitorEvaluate(&context, &input, 1000U, &result);
     conditionMonitorEvaluate(&context, &input, 121000U, &result);
-    TEST_ASSERT_EQUAL(VOLTAGE_STATE_LOCKED, result.voltage_state);
-    TEST_ASSERT_EQUAL(CONDITION_STATE_LOCKED, result.state);
-    TEST_ASSERT_EQUAL(FAULT_CODE_LOCK, result.fault);
-    TEST_ASSERT_TRUE(result.motor_stop_required);
-    TEST_ASSERT_TRUE(result.lock_required);
+    TEST_ASSERT_EQUAL(VOLTAGE_STATE_BYPASS_ACTIVE, result.voltage_state);
+    TEST_ASSERT_EQUAL(CONDITION_STATE_WARNING, result.state);
+    TEST_ASSERT_EQUAL(FAULT_CODE_VOLTAGE, result.fault);
+    TEST_ASSERT_FALSE(result.lock_required);
 }
 
 TEST_CASE("Voltage recovery exits bypass wait", "[condition_monitor]")
