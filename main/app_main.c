@@ -13,6 +13,7 @@
 #include "ina226.h"
 #include "oc_config.h"
 #include "voltage_config.h"
+#include "condition_monitor.h"
 #include "lora_transport.h"
 #include "motor_controller.h"
 #include "nfw_i2c.h"
@@ -21,6 +22,8 @@
 
 #include "ota_wifi_ap.h"
 #include "ota_server.h"
+
+static ConditionMonitorContext_t s_conditionMonitor;
 
 /* ============================================================================
  * OTA buzzer
@@ -184,6 +187,15 @@ void app_main(void)
     }
 
     printf("Voltage configuration initialization: PASS\n");
+
+    /* =====================================================================
+     * Initialize the single application-owned condition monitor context.
+     * Sensor sampling and LoRa command dispatch use this same context.
+     * =================================================================== */
+
+    conditionMonitorInit(&s_conditionMonitor);
+
+    printf("Condition monitor initialization: PASS\n");
 
     /* =========================================================================
      * 1C. Initialize SX1262 LoRa transport
