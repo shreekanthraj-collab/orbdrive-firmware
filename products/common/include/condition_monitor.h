@@ -151,6 +151,26 @@ void conditionMonitorSetOvercurrentThreshold(
 );
 
 /**
+ * @brief Activate the voltage bypass while waiting for bypass authorization.
+ *
+ * @param context Condition monitor context.
+ * @return true if bypass was activated, otherwise false.
+ */
+bool conditionMonitorActivateVoltageBypass(
+    ConditionMonitorContext_t *context
+);
+
+/**
+ * @brief Cancel a pending or active voltage bypass.
+ *
+ * @param context Condition monitor context.
+ * @return true if bypass was cancelled, otherwise false.
+ */
+bool conditionMonitorCancelVoltageBypass(
+    ConditionMonitorContext_t *context
+);
+
+/**
  * @brief Evaluate current device conditions.
  *
  * @param context Condition monitor context.
