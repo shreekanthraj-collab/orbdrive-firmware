@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS
-    "src/as5600.c"
-"src/valve_position.c"
+        "src/as5600.c"
+        "src/valve_position.c"
         "src/condition_monitor.c"
         "src/fault_manager.c"
         "src/rs485.c"
@@ -14,6 +14,7 @@ idf_component_register(
         "src/modbus_rtu.c"
         "src/flow_sensor.c"
         "src/gw_protocol.c"
+        "src/gw_legacy_telemetry.c"
 
     INCLUDE_DIRS
         "include"
