@@ -288,7 +288,10 @@ static VoltageConditionState_t conditionMonitorEvaluateVoltage(
                      context->voltage_bypass_timeout_ms)
             {
                 context->voltage_state =
-                    VOLTAGE_STATE_LOCKED;
+                    VOLTAGE_STATE_BYPASS_ACTIVE;
+
+                context->voltage_bypass_start_ms =
+                    0U;
             }
 
             break;
