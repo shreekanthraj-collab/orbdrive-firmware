@@ -14,6 +14,8 @@
 #include "oc_config.h"
 #include "voltage_config.h"
 #include "lora_transport.h"
+#include "gw_protocol.h"
+#include "command_dispatcher.h"
 #include "motor_controller.h"
 #include "nfw_i2c.h"
 #include "nfw_gpio.h"
@@ -65,6 +67,54 @@ static void otaBuzzerValid(void)
     vTaskDelay(pdMS_TO_TICKS(300U));
 
     (void)nfwGpioWrite(ORB_GPIO_BUZZER, OTA_BUZZER_OFF_LEVEL);
+}
+
+/* ============================================================================
+ * Gateway command task
+ * ========================================================================== */
+
+#define GW_COMMAND_RX_TIMEOUT_MS    (1000U)
+
+static void gatewayCommandTask(void *argument)
+{
+    uint8_t rxBuffer[GW_PROTOCOL_MAX_PACKET_LENGTH];
+
+    (void)argument;
+
+    for (;;) {
+        uint32_t receivedLength = 0U;
+
+        NfwStatus_t receiveStatus =
+            loraTransportReceive(
+                rxBuffer,
+                sizeof(rxBuffer),
+                &receivedLength,
+                GW_COMMAND_RX_TIMEOUT_MS);
+
+        if (receiveStatus == NFW_STATUS_OK && receivedLength > 0U) {
+            GwCommandPacket_t commandPacket;
+
+            NfwStatus_t parseStatus =
+                gwProtocolParseCommand(
+                    rxBuffer,
+                    (uint16_t)receivedLength,
+                    &commandPacket);
+
+            if (parseStatus == NFW_STATUS_OK) {
+                NfwStatus_t dispatchStatus =
+                    commandDispatcherDispatch(&commandPacket);
+
+                printf(
+                    "Gateway command 0x%02X dispatch status: %d\\n",
+                    (unsigned)commandPacket.command,
+                    (int)dispatchStatus);
+            } else {
+                printf(
+                    "Gateway command parse failed: %d\\n",
+                    (int)parseStatus);
+            }
+        }
+    }
 }
 
 /* ============================================================================
@@ -383,6 +433,29 @@ void app_main(void)
     printf("Motor controller initialization: PASS\n");
     printf("Motor state: STOPPED\n");
     printf("Motor PWM: 0%%\n");
+
+    /* =========================================================================
+     * Gateway command dispatcher
+     * ======================================================================= */
+
+    if (xTaskCreate(
+            gatewayCommandTask,
+            "gw_command",
+            4096U,
+            NULL,
+            5U,
+            NULL) != pdPASS) {
+        printf("Gateway command task creation FAILED\\n");
+
+        if (otaPendingVerify) {
+            printf("OTA validation FAILED - rolling back.\\n");
+            esp_ota_mark_app_invalid_rollback_and_reboot();
+        }
+
+        return;
+    }
+
+    printf("Gateway command task: STARTED\\n");
 
     /* =========================================================================
      * OTA image acceptance
