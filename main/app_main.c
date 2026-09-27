@@ -105,12 +105,12 @@ static void gatewayCommandTask(void *argument)
                     commandDispatcherDispatch(&commandPacket);
 
                 printf(
-                    "Gateway command 0x%02X dispatch status: %d\\n",
+                    "Gateway command 0x%02X dispatch status: %d\n",
                     (unsigned)commandPacket.command,
                     (int)dispatchStatus);
             } else {
                 printf(
-                    "Gateway command parse failed: %d\\n",
+                    "Gateway command parse failed: %d\n",
                     (int)parseStatus);
             }
         }
@@ -445,17 +445,17 @@ void app_main(void)
             NULL,
             5U,
             NULL) != pdPASS) {
-        printf("Gateway command task creation FAILED\\n");
+        printf("Gateway command task creation FAILED\n");
 
         if (otaPendingVerify) {
-            printf("OTA validation FAILED - rolling back.\\n");
+            printf("OTA validation FAILED - rolling back.\n");
             esp_ota_mark_app_invalid_rollback_and_reboot();
         }
 
         return;
     }
 
-    printf("Gateway command task: STARTED\\n");
+    printf("Gateway command task: STARTED\n");
 
     /* =========================================================================
      * OTA image acceptance
