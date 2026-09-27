@@ -50,7 +50,10 @@ typedef enum
     GW_COMMAND_MOTOR_START = 0x01U,
     GW_COMMAND_MOTOR_STOP = 0x02U,
     GW_COMMAND_EMERGENCY_STOP = 0x03U,
-    GW_COMMAND_CLEAR_EMERGENCY_STOP = 0x04U,
+    /* 0x04 is the SCADA-side Emergency Reset command. */
+    GW_COMMAND_EMERGENCY_RESET = 0x04U,
+    /* Backward-compatible protocol name; value remains 0x04. */
+    GW_COMMAND_CLEAR_EMERGENCY_STOP = GW_COMMAND_EMERGENCY_RESET,
 
     GW_COMMAND_GET_TELEMETRY = 0x10U,
 
