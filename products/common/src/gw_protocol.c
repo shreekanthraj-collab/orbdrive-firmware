@@ -25,7 +25,7 @@ static bool gwProtocolIsValidCommand(
     return (command == GW_COMMAND_MOTOR_START) ||
            (command == GW_COMMAND_MOTOR_STOP) ||
            (command == GW_COMMAND_EMERGENCY_STOP) ||
-           (command == GW_COMMAND_CLEAR_EMERGENCY_STOP) ||
+           (command == GW_COMMAND_EMERGENCY_RESET) ||
            (command == GW_COMMAND_GET_TELEMETRY) ||
            (command == GW_COMMAND_SET_OC_CONFIG) ||
            (command == GW_COMMAND_SET_VOLTAGE_CONFIG);
