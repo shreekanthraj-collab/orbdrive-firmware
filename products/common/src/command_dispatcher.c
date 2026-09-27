@@ -5,6 +5,8 @@
 
 #include "command_dispatcher.h"
 
+#include <stddef.h>
+
 #include "motor_controller.h"
 
 NfwStatus_t commandDispatcherDispatch(const GwCommandPacket_t *packet)
